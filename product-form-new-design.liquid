@@ -1,0 +1,1401 @@
+
+{% if section.settings.show_payment_button %}
+  {% assign show_payment_button = true %}
+{% elsif show_payment_button_quickshop %}
+  {% assign show_payment_button = true %}
+{% else %}
+  {% assign show_payment_button = false %}
+{% endif %}
+
+{% if product_bundle != blank %}
+ {% assign variant = firstVariant %}
+ {% else %}
+ {% assign variant = product.selected_or_first_available_variant %}
+{% endif %}
+
+
+
+{%- assign checkout_url = '/checkout' -%}
+{% for locale in shop.enabled_locales %}
+  {% if locale.primary == true %}
+    {%- assign defaultLocale = locale.iso_code -%}
+    {% if defaultLocale != request.locale.iso_code %}
+      {%- assign checkout_url = request.locale.iso_code | append: '/checkout' -%}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+
+{% if product.variants.size > 1 and request.page_type != 'product' %}
+  <div class="product-more-variants">
+    <a href="{{product.url}}" class="global-button">Show More</a>
+  </div>
+{% else %}
+  <div
+    class="product_form init smart-payment-button--{{ show_payment_button }} {% if product.variants.size > 1 or product.options.size > 1 %}product_form_options{% endif %} product_form--{{ settings.product_form_style_new }} "
+    id="product-form-{{ product.id }}"
+    data-product-form
+    data-options-size="{{ product.options.size }}"
+    data-money-format="{{ shop.money_format | strip_html }}"
+    data-shop-currency="{{ shop.currency }}"
+    data-select-id="product-select-{{ product.id }}{{ product-form }}{{ section.id }}{{ block.id }}"
+    data-enable-state="{% if template contains 'product' %}true{% else %}false{% endif %}"
+    data-product="{{ product | json | escape }}"
+    {% if settings.limit_quantity or settings.display_inventory_left %}
+      data-variant-inventory="[{%- for v in product.variants -%}{"id":{{v.id}},"inventory_quantity":{{v.inventory_quantity}},"inventory_management":"{{v.inventory_management}}","inventory_policy":"{{v.inventory_policy}}"}{% if forloop.last == false %},{% endif %}{%- endfor -%}]"
+    {% endif %}
+    data-product-id="{{ product.id }}"
+  >
+    {% render 'wishlist-detail-button', product: product %}
+    {% form 'product', product %}
+      {% if product.options.size > 1 %}
+        <div class="select">
+          <select
+            id="product-select-{{ product.id }}{{ product-form }}{{ section.id }}{{ block.id }}"
+            name="id"
+            class="multi_select"
+            data-variants
+          >
+            {% for v in product.variants %}
+              <option
+                {% if v == variant %}
+                  selected="selected"
+                {% endif %}
+                value="{{ v.id }}"
+                dataMediaID="{{ v.featured_media.id }}"
+                data-featured-image="{{ v.featured_media }}"
+                data-image="{{ v.featured_media | product_img_url: '600x' }}"
+                data-sku="{{ v.sku }}"
+              >
+                {{ v.title }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      {% elsif product.options.size == 1
+        and product.variants.size > 1
+        or product.options.size == 1
+        and product.options[0] != 'Title'
+      %}
+        <div class="select">
+          <label>
+            {%- if product.handle == 'tullulah-gemstone-necklace' -%}
+              Add Your Charm
+            {%- else -%}
+              {{- product.options[0] -}}
+            {%- endif -%}
+          </label>
+
+          <select
+            id="product-select-{{ product.id }}{{ product-form }}{{ section.id }}{{ block.id }}"
+            name="id"
+            data-variants
+          >
+            {% for v in product.variants %}
+              <option
+                {% if v == variant %}
+                  selected="selected"
+                {% endif %}
+                value="{{ v.id }}"
+                dataMediaID="{{ v.featured_media.id }}"
+                data-featured-image="{{ v.featured_media }}"
+                data-image="{{ v.featured_media | product_img_url: '600x' }}"
+                data-sku="{{ v.sku }}"
+              >
+                {{ v.title }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      {% else %}
+        <input type="hidden" name="id" value="{{ variant.id }}">
+      {% endif %}
+
+      {% if settings.product_form_style_new == 'swatches'
+        and product.variants.size > 1
+        or settings.product_form_style_new == 'swatches'
+        and product.options[0] != 'Title'
+      %}
+        {% comment %} rendering product option swatches but from product directly {% endcomment %}
+        <div class="swatch_options">
+          {% for option in product.options %}
+            {% render 'product-swatch', option: option, product: product %}
+          {% endfor %}
+        </div>
+      {% endif %}
+      {% if product.handle != 'say-my-name-charm-necklace' and product.handle != 'say-my-name-bracelet' %}
+        {% render 'charm-product-form' %}
+      {% endif %}
+      {% if product.handle == 'say-my-name-charm-necklace' or product.handle == 'say-my-name-bracelet' %}
+        <input type="hidden" name="properties[_isSayMyName]" value="true">
+        {% assign letterProduct = all_products['say-my-name-charms'] %}
+        {% assign chainProduct = all_products['say-my-name-chain'] %}
+        <script>
+          window.letterProduct = {{ letterProduct | json }}
+        </script>
+        <script>
+          window.chainProduct = {{ chainProduct | json }}
+        </script>
+        <script>
+          window.pricePerCharm = {{letterProduct.price | json }}
+        </script>
+
+         {% capture necklaceVariants %}
+        {% for variant in product.variants %}
+          <option value="{{ variant.title }}" {% if variant.available == false %}disabled{% endif %}>{{ variant.title }}</option>
+          {% if allOutOfStock and variant.available %}
+            {% assign allOutOfStock = false %}
+          {% endif %}
+        {% endfor %}
+      {% endcapture %}
+
+        {% capture initalProductOptions %}
+        {% for variant in letterProduct.variants %}
+          <option value="{{ variant.title }}" {% if variant.available == false %}disabled{% endif %}>{{ variant.title }}</option>
+          {% if allOutOfStock and variant.available %}
+            {% assign allOutOfStock = false %}
+          {% endif %}
+        {% endfor %}
+      {% endcapture %}
+
+        {% if allOutOfStock or chainProduct.available == false %}
+          {% assign productOutOfStock = true %}
+          <script>
+            window.productOutOfStock = true;
+          </script>
+        {% endif %}
+
+        <div class="say-my-name-charm-necklace-numbers numbersSelector">
+          <div class="option_title">Number of Letters:</div>
+          <div class="multipleOptions">
+            <div value="1 Letter" class="letterSwatch selected">
+              <label> 1 Letter </label>
+            </div>
+            <div value="2 Letters" class="letterSwatch">
+              <label> 2 Letters </label>
+            </div>
+            <div value="3 Letters" class="letterSwatch">
+              <label> 3 Letters </label>
+            </div>
+            <div value="4 Letters" class="letterSwatch">
+              <label> 4 Letters </label>
+            </div>
+            <div value="5 Letters" class="letterSwatch">
+              <label> 5 Letters </label>
+            </div>
+            <div value="6 Letters" class="letterSwatch">
+              <label> 6 Letters </label>
+            </div>
+            <div value="7 Letters" class="letterSwatch">
+              <label> 7 Letters </label>
+            </div>
+            <div value="8 Letters" class="letterSwatch">
+              <label> 8 Letters </label>
+            </div>
+          </div>
+        </div>
+        <div class="say-my-name-charm-necklace-letters lettersSelectContainer">
+          <div class="selectContainer">
+            <label><span class="selectLabelTitle">Choose Your First Letter:</span></label>
+            <div>
+              <select name="properties[Choose Your First Letter]" disabled="disabled">
+                <option selected="selected" disabled="" value="">Choose one</option>
+                {{ necklaceVariants }}
+              </select>
+            </div>
+          </div>
+          <div class="selectContainer">
+            <label><span class="selectLabelTitle">Choose Your Second Letter:</span></label>
+            <div>
+              <select name="properties[Choose Your Second Letter]" disabled="disabled">
+                <option selected="selected" disabled="" value="">Choose one</option>
+                {{ initalProductOptions }}
+              </select>
+            </div>
+          </div>
+          <div class="selectContainer">
+            <label><span class="selectLabelTitle">Choose Your Third Letter:</span></label>
+            <div>
+              <select name="properties[Choose Your Third Letter]" disabled="disabled">
+                <option selected="selected" disabled="" value="">Choose one</option>
+                {{ initalProductOptions }}
+              </select>
+            </div>
+          </div>
+          <div class="selectContainer">
+            <label><span class="selectLabelTitle">Choose Your Fourth Letter:</span></label>
+            <div>
+              <select name="properties[Choose Your Fourth Letter]" disabled="disabled">
+                <option selected="selected" disabled="" value="">Choose one</option>
+                {{ initalProductOptions }}
+              </select>
+            </div>
+          </div>
+          <div class="selectContainer">
+            <label><span class="selectLabelTitle">Choose Your Fifth Letter:</span></label>
+            <div>
+              <select name="properties[Choose Your Fifth Letter]" disabled="disabled">
+                <option selected="selected" disabled="" value="">Choose one</option>
+                {{ initalProductOptions }}
+              </select>
+            </div>
+          </div>
+          <div class="selectContainer">
+            <label><span class="selectLabelTitle">Choose Your Sixth Letter:</span></label>
+            <div>
+              <select name="properties[Choose Your Sixth Letter]" disabled="disabled">
+                <option selected="selected" disabled="" value="">Choose one</option>
+                {{ initalProductOptions }}
+              </select>
+            </div>
+          </div>
+          <div class="selectContainer">
+            <label><span class="selectLabelTitle">Choose Your Seventh Letter:</span></label>
+            <div>
+              <select name="properties[Choose Your Seventh Letter]" disabled="disabled">
+                <option selected="selected" disabled="" value="">Choose one</option>
+                {{ initalProductOptions }}
+              </select>
+            </div>
+          </div>
+          <div class="selectContainer">
+            <label><span class="selectLabelTitle">Choose Your Eighth Letter:</span></label>
+            <div>
+              <select name="properties[Choose Your Eighth Letter]" disabled="disabled">
+                <option selected="selected" disabled="" value="">Choose one</option>
+                {{ initalProductOptions }}
+              </select>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      {% if product.available %}
+        {% if settings.display_inventory_left %}
+          <div class="items_left">
+            {% if variant.inventory_management != blank and variant.inventory_quantity > 0 %}
+              {% capture items_left_text %}
+            {% if variant.inventory_quantity == 1 %}
+              {{ 'products.product.items_left_count.one' | t }}
+            {% else %}
+              {{ 'products.product.items_left_count.other' | t }}
+            {% endif %}
+          {% endcapture %}
+              {% if variant.inventory_quantity <= settings.inventory_threshold %}
+                {{ variant.inventory_quantity }}
+                {{ items_left_text }}
+              {% endif %}
+            {% endif %}
+          </div>
+        {% endif %}
+      {% endif %}
+
+      <div class="purchase-details">
+        {% if settings.display_product_quantity %}
+          <div class="purchase-details__quantity product-quantity-box">
+            <label for="quantity">{{ 'products.product.quantity' | t }}</label>
+            <span class="ss-icon product-minus js-change-quantity" data-func="minus"
+              ><span class="icon-minus"></span
+            ></span>
+            <input
+              type="number"
+              min="1"
+              size="2"
+              class="quantity"
+              name="quantity"
+              id="quantity"
+              value="1"
+              {% if settings.limit_quantity
+                and variant.inventory_management != blank
+                and variant.inventory_policy == 'deny'
+              %}
+                max="{{ variant.inventory_quantity }}"
+              {% endif %}
+            >
+            <span class="ss-icon product-plus js-change-quantity" data-func="plus"
+              ><span class="icon-plus"></span
+            ></span>
+          </div>
+        {% endif %}
+        
+
+        {% if section.settings.display_savings %}
+          <span class="sale savings">
+            {% if variant.price < variant.compare_at_price %}
+              {{ 'products.product.savings' | t }}
+              {{ variant.compare_at_price | minus: variant.price | times: 100 | divided_by: variant.compare_at_price }}%
+              (<span class="money save-pi">
+                {%- assign compare_at = variant.compare_at_price | minus: variant.price -%}
+                {% render 'price-element', price: compare_at -%}</span
+              >)
+            {% endif %}
+          </span>
+        {% endif %}
+        <span class="sticky-save"></span>
+        <div class="purchase-details__buttons purchase-details__spb--{{ show_payment_button }} {% if product.available == false %}product-is-unavailable{% endif %}">
+          {% if settings.cart_action == 'reload_page' %}
+            <input type="hidden" name="return_to" value="back">
+          {% elsif settings.cart_action == 'redirect_checkout' %}
+            <input type="hidden" name="return_to" value="{{ checkout_url }}">
+          {% endif %}
+
+          {% comment %}
+            {%- assign product_tags = product.tags | join: ' ' -%}
+            {% if product_tags contains 'meta-size-chart-' %}
+              {% for tag in product.tags %}
+                {% if tag contains 'meta-size-chart-' %}
+                  <a href="javascript:;" class="size_chart" data-fancybox data-src="#size-chart{{product.id}}" data-type="inline" data-no-instant>{{ 'products.product.size_chart' | t }} </a>
+                  {% render 'popup-size-chart', product_id: product.id %}
+                {% endif %}
+              {% endfor %}
+            {% elsif settings.size_chart != blank %}
+              <a href="javascript:;" class="size_chart" data-fancybox data-src="#size-chart{{product.id}}" data-type="inline" data-no-instant>{{ 'products.product.size_chart' | t }} </a>
+            {% endif %}
+          {% endcomment %}
+
+          <!-- Engraving Button -->
+          <div class="engraving-button-wrap">
+            <div id="engraving_button" class="engraving-button transparent-button" data-toggle-modal="engraving_modal">
+              <span id="engraving_button_label">Add Engraving +$15</span>
+            </div>
+            <input type="hidden" name="engraving_tag" id="engraving_tag">
+            <input type="hidden" name="engraving_left" id="engraving_left">
+            <input type="hidden" name="engraving_text" id="engraving_text">
+            <input type="hidden" name="engraving_font" id="engraving_font">
+
+            <input type="hidden" name="engraving_text_second" id="engraving_text_second">
+            <input type="hidden" name="engraving_font_second" id="engraving_font_second">
+            <input type="hidden" name="engraving_left_second" id="engraving_left_second">
+            <input type="hidden" name="engraving_area_second" id="engraving_area_second">
+          </div>
+          <!-- End Engraving Button -->
+          {% assign product_bundle = product.metafields.custom.product_add_on_bundle.value.options.value %}
+          {% capture add_to_cart_label %}{% if collection_handles contains 'pre-order' %}{{ 'collections.general.pre_order' | t }}{% else %}{{ 'products.product.add_to_cart' | t }}{% endif %}{% endcapture %}
+          <button
+            type="{% if settings.cart_action == 'ajax' %}button{% else %}submit{% endif %}"
+            name="add"
+            class="
+              add_to_cart
+              global-button
+              {% if show_payment_button %}
+                global-button--secondary
+              {% else %}
+                global-button--primary
+              {% endif %}
+              {% if settings.cart_action == 'ajax' %}
+                ajax-submit
+              {% endif %}
+              {% if product.available == false %}
+                disabled
+              {% endif %}
+            "
+            id="{% if product_bundle != blank %}js--fetch-products{% endif %}"
+            data-label="{{ add_to_cart_label }}"
+          >
+            <span class="text">
+              {% if product.available %}{{ add_to_cart_label }}{% else %}{{ settings.sold_out_text }}{% endif %}
+            </span>
+            {% comment %} <svg x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" class="checkmark">
+              <path fill="none" stroke-width="2" stroke-linecap="square" stroke-miterlimit="10" d="M9,17l3.9,3.9c0.1,0.1,0.2,0.1,0.3,0L23,11"/>
+            </svg> {% endcomment %}
+          </button>
+          {% if show_payment_button %}
+            {{ form | payment_button }}
+          {% endif %}
+        </div>
+      </div>
+      {% comment %} <button id="js--fetch-products" type="{% if settings.cart_action == 'ajax' %}button{% else %}submit{% endif %}">Add to cart</button> {% endcomment %}
+     
+      
+      <!-- Engraving Script -->
+      <script>
+    /*
+    engraving_rings_1	    Miro Gold Signet Ring
+    engraving_rings_3	    Aster Gold Signet Ring
+    engraving_necklaces_3	CLASSIC GOLD LOCKET NECKLACE
+    engraving_necklaces_2	Miller Gold Necklace
+    engraving_necklaces_2_1	Miller Gold Necklace
+    engraving_earrings_2	Beau Gold Earrings
+    engraving_earrings_2_1	Miller Gold Earrings
+    engraving_earrings_2_2	Beau Single Gold Earrings
+    engraving_earrings_2_3	Miller Single Gold Earrings
+    */
+
+    document.addEventListener('DOMContentLoaded', function () {
+      var productTags = {{ product.tags | json }};
+      var product = {{ product | json }};
+
+      var engravingInfo = {
+        left: "",
+        text: "",
+        font: "Roman"
+      };
+
+      var engravingInfoSecond = {
+        left: "",
+        text: "",
+        font: "Roman"
+      };
+
+
+      var engravingTags = ["engraving_earrings_", "engraving_necklaces_", "engraving_rings_"];
+      var addEngravingButton = document.getElementById("engraving_button");
+      var currentTag = "";
+
+      var _engravingTag = document.querySelector("#engraving_tag");
+      var _engravingLeft = document.querySelector("#engraving_left");
+      var _engravingText = document.querySelector("#engraving_text");
+      var _engravingFont = document.querySelector("#engraving_font");
+      _engravingFont.value = "Roman";
+
+      var _engravingTagSecond = document.querySelector("#engraving_tag_second");
+      var _engravingLeftSecond = document.querySelector("#engraving_left_second");
+      var _engravingTextSecond = document.querySelector("#engraving_text_second");
+      var _engravingFontSecond = document.querySelector("#engraving_font_second");
+      _engravingFontSecond.value = "Roman";
+
+      var engravingModal = document.getElementById("engraving_modal");
+      var engravingButtonLabel = document.querySelector("#engraving_button_label");
+      var engravingLimits = document.querySelectorAll(".engraving-limit");
+      var engravingLeftLetterNum = document.getElementById("engraving_left_letter_num");
+      var engravingLetterNum = document.getElementById("engraving_letter_num");
+      // if product has second text input
+      var engravingLetterNumSecond = document.getElementById("engraving_letter_num_second");
+      var engravingLeftTextInput = document.getElementById("engraving_left_text_input");
+      var engravingTextInput = document.getElementById("engraving_text_input");
+      // if product has back/front area of engraving
+      var engravingTextInputSecond = document.getElementById("engraving_text_input_second");
+      var engravingFontOptions = document.querySelectorAll(".engraving-font-option");
+      var engravingFontDisplay = document.querySelector("#engraving_font_display");
+      var fontRoman = document.querySelector("#engraving_roman");
+      var fontVanessa = document.querySelector("#engraving_vanessa");
+      var engravingLeftTextDisplay = document.querySelector("#engraving_left_text_display");
+      var engravingTextDisplay = document.querySelector("#engraving_text_display");
+      var engravingTextDisplaySecond = document.querySelector("#engraving_text_display_second");
+      var engravingMobileLeftTextDisplay = document.querySelector("#engraving_mobile_left_text_display");
+      var engravingMobileTextDisplay = document.querySelector("#engraving_mobile_text_display");
+      var engravingMobileImageWrap = document.querySelector(".engraving-mobile-image-wrap");
+      var engravingMobileImage = document.querySelector(".engraving-mobile-image");
+
+      var hasEngravingTag = false;
+      var limit = "0";
+      // collecting limit data trz
+      for (var i = 0; i < productTags.length; i++) {
+        for (var j = 0; j < engravingTags.length; j++) {
+          if (productTags[i].includes(engravingTags[j])) {
+            hasEngravingTag = true;
+            var additions = productTags[i].replace(engravingTags[j], "");
+            limit = additions.split('_')[0];
+            currentTag = productTags[i];
+            break;
+          }
+        }
+        
+        if (hasEngravingTag) {
+          break;
+        }
+      }
+      
+      if (hasEngravingTag && limit !== "0") {
+        // Load Engraving background images        
+        var engravingImages = document.querySelectorAll(".engraving-image");
+        engravingImages.forEach((engravingImage) => {
+          engravingImage.style.backgroundImage = `url(${product.featured_image})`;
+        });
+        
+        addEngravingButton.style.display = "block";
+        
+        addEngravingButton.addEventListener("click", function() {
+          engravingInfo.left = _engravingLeft.value;
+          engravingInfo.text = _engravingText.value;
+          engravingInfo.font = _engravingFont.value;
+
+
+          engravingInfoSecond.left = _engravingLeftSecond.value;
+          engravingInfoSecond.text = _engravingTextSecond.value;
+          engravingInfoSecond.font = _engravingFontSecond.value;
+         
+
+          engravingModal.classList.add("target");
+
+          // Initialize elements
+          var engravingLeftInputLabelBox = document.querySelector("#engraving_left_input_label_box");
+          var engravingDefaultInputLabel = document.querySelector("#engraving_default_input_label");
+          
+          if (currentTag === "engraving_earrings_2" || currentTag === "engraving_earrings_2_1") {
+            engravingLeftInputLabelBox.style.display = "flex";
+            engravingLeftTextInput.style.display = "block";
+            engravingDefaultInputLabel.innerHTML = "Right:";
+          } else {
+            engravingLeftInputLabelBox.style.display = "none";
+            engravingLeftTextInput.style.display = "none";
+            engravingDefaultInputLabel.innerHTML = "Text:";
+          }
+          engravingLimits.forEach((engravingLimit) => {
+            engravingLimit.innerHTML = limit;
+          });
+
+          engravingLeftLetterNum.innerHTML = engravingInfo.left.length;
+          engravingLetterNum.innerHTML = engravingInfo.text.length;
+          if (currentTag === "engraving_necklaces_4") {
+            engravingLetterNumSecond.innerHTML = engravingInfo.text.length;
+          }
+          engravingFontDisplay.innerHTML = engravingInfo.font;
+          engravingLeftTextInput.value = engravingInfo.left;
+          engravingTextInput.value = engravingInfo.text;
+          if (currentTag === "engraving_necklaces_4") {
+            engravingTextInputSecond.value = engravingInfo.text;
+          }
+          engravingLeftTextDisplay.style.fontFamily = engravingInfo.font;
+          engravingLeftTextDisplay.innerHTML = engravingInfo.left;
+          engravingMobileLeftTextDisplay.style.fontFamily = engravingInfo.font;
+          engravingMobileLeftTextDisplay.innerHTML = engravingInfo.left;
+          engravingTextDisplay.style.fontFamily = engravingInfo.font;
+          engravingTextDisplay.innerHTML = engravingInfo.text;
+          engravingTextDisplaySecond.innerHTML = engravingInfo.text;
+          engravingMobileTextDisplay.style.fontFamily = engravingInfo.font;
+          engravingMobileTextDisplay.innerHTML = engravingInfo.text;
+
+          if (engravingInfo.font === "Roman") {
+            fontRoman.classList.add("selected");
+            fontVanessa.classList.remove("selected");
+          } else {
+            fontRoman.classList.remove("selected");
+            fontVanessa.classList.add("selected");
+          }
+
+          setLetterPosition(engravingInfo.font);
+
+          // If 'necklaces', show the bottom of image mainly
+          if (currentTag === "engraving_necklaces_3") {
+            engravingMobileImageWrap.style.alignItems = "end";
+            engravingMobileImage.style.backgroundSize = "540px 540px";
+            engravingMobileImage.style.backgroundPosition = "50% -150px";
+          }
+          else if (currentTag === "engraving_necklaces_2") {
+            engravingMobileImageWrap.style.alignItems = "end";
+            engravingMobileImage.style.backgroundSize = "1080px 1080px";
+            engravingMobileImage.style.backgroundPosition = "50% -625px";
+          }
+          else if (currentTag === "engraving_earrings_2_1") {
+            engravingMobileImage.style.backgroundSize = "720px 720px";
+          }
+          else if (currentTag === "engraving_earrings_2") {
+            engravingMobileImage.style.backgroundSize = "720px 720px";
+          }
+          else if (currentTag === "engraving_earrings_2_2") {
+            engravingMobileImage.style.backgroundSize = "720px 720px";
+          }
+          else if (currentTag === "engraving_earrings_2_3") {
+            engravingMobileImage.style.backgroundSize = "720px 720px";
+          }
+        });
+
+        engravingLeftTextInput.addEventListener("input", function() {
+          engravingLeftLetterNum.innerHTML = this.value.length;
+          // Allow only capital letters
+          this.value = this.value.toUpperCase();
+          this.value = this.value.replace(/[^A-Z0-9!@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]/g, '');
+          if (this.value.length > limit) {
+            this.value = this.value.slice(0, limit);
+          }
+
+          engravingLeftTextDisplay.innerHTML = this.value;
+          engravingMobileLeftTextDisplay.innerHTML = this.value;
+
+          setLetterPosition(engravingFontDisplay.innerHTML);
+        });
+
+        engravingTextInput.addEventListener("input", function() {
+          engravingLetterNum.innerHTML = this.value.length;
+          // Allow only capital letters
+          this.value = this.value.toUpperCase();
+          this.value = this.value.replace(/[^A-Z0-9!@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]/g, '');
+          if (this.value.length > limit) {
+            this.value = this.value.slice(0, limit);
+          }
+
+          engravingTextDisplay.innerHTML = this.value;
+          engravingMobileTextDisplay.innerHTML = this.value;
+
+          setLetterPosition(engravingFontDisplay.innerHTML);
+        });
+        if (currentTag === "engraving_necklaces_4") {
+        engravingTextInputSecond.addEventListener("input", function() {
+          engravingLetterNumSecond.innerHTML = this.value.length;
+          // Allow only capital letters
+          this.value = this.value.toUpperCase();
+          this.value = this.value.replace(/[^A-Z0-9!@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]/g, '');
+          if (this.value.length > limit) {
+            this.value = this.value.slice(0, limit);
+          }
+
+          engravingTextDisplaySecond.innerHTML = this.value;
+
+          });
+        }
+
+        engravingFontOptions.forEach(function(option) {
+          option.addEventListener("click", function(event) {
+            var selectedOptionId = this.id;
+            
+            if (selectedOptionId === "engraving_roman") {
+              fontRoman.classList.add("selected");
+              fontVanessa.classList.remove("selected");
+              
+              engravingFontDisplay.innerHTML = "Roman";
+              
+              engravingLeftTextDisplay.style.fontFamily = "Roman";
+              engravingTextDisplay.style.fontFamily = "Roman";
+              engravingMobileLeftTextDisplay.style.fontFamily = "Roman";
+              engravingMobileTextDisplay.style.fontFamily = "Roman";
+            } else { // selectedOptionId === "engraving_vanessa"
+              fontRoman.classList.remove("selected");
+              fontVanessa.classList.add("selected");
+              
+              engravingFontDisplay.innerHTML = "Vanessa";
+              
+              engravingLeftTextDisplay.style.fontFamily = "Vanessa";
+              engravingMobileLeftTextDisplay.style.fontFamily = "Vanessa";
+              engravingTextDisplay.style.fontFamily = "Vanessa";
+              engravingMobileTextDisplay.style.fontFamily = "Vanessa";
+            }
+            
+            var font = (selectedOptionId === "engraving_roman") ? "Roman" : "Vanessa";
+            setLetterPosition(font);
+          });
+        });
+
+        function standardizeLeter(text) {
+          return text.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">");
+        }
+
+        function setLetterPosition(font) {
+          var letters = standardizeLeter(engravingTextDisplay.innerHTML).length;
+          var leftLetters = standardizeLeter(engravingLeftTextDisplay.innerHTML).length;
+          if (currentTag === "engraving_rings_1") { // ex. Miro Gold Signet Ring
+            engravingTextDisplay.style.width = "150px";
+            engravingTextDisplay.style.height = "150px";
+            engravingMobileTextDisplay.style.width = "65px";
+            engravingMobileTextDisplay.style.height = "65px";
+
+            if (font === "Roman") {
+              engravingTextDisplay.style.fontSize = "160px";
+              engravingTextDisplay.style.paddingTop = "38px";
+
+              engravingMobileTextDisplay.style.fontSize = "72px";
+              engravingMobileTextDisplay.style.paddingTop = "15px";
+            } 
+            else if (font === "Vanessa") {
+              engravingTextDisplay.style.fontSize = "135px";
+              engravingTextDisplay.style.paddingTop = "45px";
+
+              engravingMobileTextDisplay.style.fontSize = "60px";
+              engravingMobileTextDisplay.style.paddingTop = "20px";
+            }
+          } 
+          else if (currentTag === "engraving_rings_3") { // ex. Aster Gold Signet Ring
+            engravingTextDisplay.style.width = "261px";
+            engravingTextDisplay.style.height = "115px";
+            engravingTextDisplay.style.top = "45.5%";
+
+            engravingMobileTextDisplay.style.width = "118px";
+            engravingMobileTextDisplay.style.height = "52px";
+            engravingMobileTextDisplay.style.top = "45.5%";
+            if (font === "Roman") {
+              if (letters === 1) {
+                engravingTextDisplay.style.fontSize = "140px";
+                engravingTextDisplay.style.paddingTop = "32px";
+                engravingMobileTextDisplay.style.fontSize = "64px";
+                engravingMobileTextDisplay.style.paddingTop = "14px";
+              } 
+              else if (letters === 2) {
+                engravingTextDisplay.style.fontSize = "90px";        
+                engravingTextDisplay.style.paddingTop = "30px";
+                engravingMobileTextDisplay.style.fontSize = "45px";
+                engravingMobileTextDisplay.style.paddingTop = "13px";
+              } 
+              else if (letters === 3) {
+                engravingTextDisplay.style.fontSize = "105px";
+                engravingTextDisplay.style.paddingTop = "28px";             
+                engravingMobileTextDisplay.style.fontSize = "47px";
+                engravingMobileTextDisplay.style.paddingTop = "13px";
+              }
+            }
+            else if (font === "Vanessa") {
+              if (letters === 1) {
+                engravingTextDisplay.style.fontSize = "86px";
+                engravingTextDisplay.style.paddingTop = "32px";
+                engravingMobileTextDisplay.style.fontSize = "38px";
+                engravingMobileTextDisplay.style.paddingTop = "15px";
+              } else if (letters === 2) {
+                engravingTextDisplay.style.fontSize = "79px";
+                engravingTextDisplay.style.paddingTop = "18px";
+                engravingMobileTextDisplay.style.fontSize = "32px";
+                engravingMobileTextDisplay.style.paddingTop = "15px";
+              } else if (letters === 3) {
+                engravingTextDisplay.style.fontSize = "65px";
+                engravingTextDisplay.style.paddingTop = "28px";
+                engravingMobileTextDisplay.style.fontSize = "29px";
+                engravingMobileTextDisplay.style.paddingTop = "15px";
+              }
+            }
+          } 
+          else if (currentTag === "engraving_necklaces_3") { // ex. CLASSIC GOLD LOCKET NECKLACE            
+            engravingTextDisplay.style.top = "73.7%";
+            engravingTextDisplay.style.left = "48.2%";
+            engravingTextDisplay.style.height = "105px";
+            engravingTextDisplay.style.width = "64px";
+
+            engravingMobileTextDisplay.style.top = "70%";
+            engravingMobileTextDisplay.style.left = "47.2%";
+            engravingMobileTextDisplay.style.height = "63px";
+            engravingMobileTextDisplay.style.width = "44px";
+            if (font === "Roman") {
+              if (letters === 1) {
+                engravingTextDisplay.style.fontSize = "83px";
+                engravingMobileTextDisplay.style.fontSize = "53px";
+                engravingTextDisplay.style.paddingTop = "18px";
+                engravingMobileTextDisplay.style.paddingTop = "11px";
+              } else if (letters === 2) {
+                engravingTextDisplay.style.fontSize = "40px";
+                engravingMobileTextDisplay.style.fontSize = "29px";
+                engravingTextDisplay.style.paddingTop = "12px";
+                engravingMobileTextDisplay.style.paddingTop = "9px";
+              } else if (letters === 3) {
+                engravingTextDisplay.style.fontSize = "33px";
+                engravingMobileTextDisplay.style.fontSize = "22.5px";
+                engravingTextDisplay.style.paddingTop = "10px";
+                engravingMobileTextDisplay.style.paddingTop = "8px";
+              }
+            } else if (font === "Vanessa") {
+              if (letters === 1) {
+                engravingTextDisplay.style.fontSize = "55px";
+                engravingMobileTextDisplay.style.fontSize = "35px";
+                engravingTextDisplay.style.paddingTop = "18px";
+                engravingMobileTextDisplay.style.paddingTop = "11px";
+              } else if (letters === 2) {
+                engravingTextDisplay.style.fontSize = "30px";
+                engravingMobileTextDisplay.style.fontSize = "19px";
+                engravingTextDisplay.style.paddingTop = "12px";
+                engravingMobileTextDisplay.style.paddingTop = "9px";
+              } else if (letters === 3) {
+                engravingTextDisplay.style.fontSize = "20px";
+                engravingMobileTextDisplay.style.fontSize = "13px";
+                engravingTextDisplay.style.paddingTop = "10px";
+                engravingMobileTextDisplay.style.paddingTop = "8px";
+              }
+            }
+          }
+          else if (currentTag === "engraving_necklaces_4") { // ex. Momento Gold Necklace            
+            engravingTextDisplay.style.top = "76%";
+            engravingTextDisplay.style.left = "46%";
+            engravingTextDisplay.style.height = "105px";
+            engravingTextDisplay.style.width = "64px";
+
+            engravingMobileTextDisplay.style.top = "70%";
+            engravingMobileTextDisplay.style.left = "47.2%";
+            engravingMobileTextDisplay.style.height = "63px";
+            engravingMobileTextDisplay.style.width = "44px";
+            engravingTextDisplaySecond.style.display = "none";
+            if (font === "Roman") {
+              if (letters === 1) {
+                engravingTextDisplay.style.fontSize = "83px";
+                engravingMobileTextDisplay.style.fontSize = "53px";
+                engravingTextDisplay.style.paddingTop = "18px";
+                engravingMobileTextDisplay.style.paddingTop = "11px";
+              } else if (letters === 2) {
+                engravingTextDisplay.style.fontSize = "40px";
+                engravingMobileTextDisplay.style.fontSize = "29px";
+                engravingTextDisplay.style.paddingTop = "12px";
+                engravingMobileTextDisplay.style.paddingTop = "9px";
+              } else if (letters === 3) {
+                engravingTextDisplay.style.fontSize = "33px";
+                engravingMobileTextDisplay.style.fontSize = "22.5px";
+                engravingTextDisplay.style.paddingTop = "10px";
+                engravingMobileTextDisplay.style.paddingTop = "8px";
+              }
+              else if (letters === 4) {
+                engravingTextDisplay.style.fontSize = "25px";
+                engravingMobileTextDisplay.style.fontSize = "16px";
+                engravingTextDisplay.style.paddingTop = "8px";
+                engravingMobileTextDisplay.style.paddingTop = "6px";
+              }
+            } else if (font === "Vanessa") {
+              if (letters === 1) {
+                engravingTextDisplay.style.fontSize = "55px";
+                engravingMobileTextDisplay.style.fontSize = "35px";
+                engravingTextDisplay.style.paddingTop = "18px";
+                engravingMobileTextDisplay.style.paddingTop = "11px";
+              } else if (letters === 2) {
+                engravingTextDisplay.style.fontSize = "30px";
+                engravingMobileTextDisplay.style.fontSize = "19px";
+                engravingTextDisplay.style.paddingTop = "12px";
+                engravingMobileTextDisplay.style.paddingTop = "9px";
+              } else if (letters === 3) {
+                engravingTextDisplay.style.fontSize = "20px";
+                engravingMobileTextDisplay.style.fontSize = "13px";
+                engravingTextDisplay.style.paddingTop = "10px";
+                engravingMobileTextDisplay.style.paddingTop = "8px";
+              }
+            }
+          }
+          else if (currentTag === "engraving_necklaces_2_1") { // ex. Heart Gold Locket Necklace
+            
+            engravingTextDisplay.style.top = "82.8%";
+            engravingTextDisplay.style.left = "47.7%";
+            engravingTextDisplay.style.width = "29px";
+            engravingTextDisplay.style.height = "36px";
+
+            engravingMobileTextDisplay.style.top = "78%";
+            engravingMobileTextDisplay.style.left = "44.2%";
+            engravingMobileTextDisplay.style.width = "40px";
+            engravingMobileTextDisplay.style.height = "48px";
+            
+            if (font === "Roman") {
+              engravingTextDisplay.style.paddingTop = "5px";
+              engravingTextDisplay.style.paddingLeft = "0";
+              engravingMobileTextDisplay.style.paddingTop = "5px";
+              if (letters === 1) {
+                engravingTextDisplay.style.fontSize = "55px";
+                engravingMobileTextDisplay.style.fontSize = "19px";
+                engravingTextDisplay.style.letterSpacing = "unset";
+                engravingMobileTextDisplay.style.paddingLeft = "unset";
+                engravingMobileTextDisplay.style.letterSpacing = "unset";
+              } else if (letters === 2) {
+                engravingTextDisplay.style.fontSize = "29px";                
+                engravingTextDisplay.style.paddingTop = "0px";
+                engravingTextDisplay.style.paddingLeft = "9px";
+                engravingTextDisplay.style.letterSpacing = "4px";
+                engravingMobileTextDisplay.style.fontSize = "16px";
+                engravingMobileTextDisplay.style.paddingLeft = "1px";
+                engravingMobileTextDisplay.style.paddingTop = "0px";
+                if (isIOS()) {
+                  engravingMobileTextDisplay.style.letterSpacing = "5px";
+                } else {
+                  engravingMobileTextDisplay.style.letterSpacing = "2px";
+                }
+              }
+            } else if (font === "Vanessa") {
+              engravingTextDisplay.style.paddingTop = "10px";
+              engravingTextDisplay.style.paddingLeft = "13px";
+              engravingMobileTextDisplay.style.paddingTop = "7px";
+              engravingMobileTextDisplay.style.paddingLeft = "5px";
+              engravingTextDisplay.style.letterSpacing = "5px";
+              engravingMobileTextDisplay.style.letterSpacing = "7px";
+              if (letters === 1) {
+                engravingTextDisplay.style.fontSize = "58px";
+                engravingMobileTextDisplay.style.fontSize = "25px";
+              } else if (letters === 2) {
+                engravingTextDisplay.style.fontSize = "29px";
+                engravingMobileTextDisplay.style.fontSize = "22px";
+                engravingMobileTextDisplay.style.letterSpacing = "3px";
+                engravingMobileTextDisplay.style.paddingTop = "1px";
+                engravingMobileTextDisplay.style.paddingLeft = "3px";
+                engravingTextDisplay.style.paddingTop = "0";
+              }
+            }
+          }
+          else if (currentTag === "engraving_necklaces_2") { // ex. Miller Gold Necklace
+            engravingTextDisplay.style.writingMode = "vertical-rl";
+            engravingTextDisplay.style.textOrientation = "upright";
+            engravingMobileTextDisplay.style.writingMode = "vertical-rl";
+            engravingMobileTextDisplay.style.textOrientation = "upright";
+            
+            engravingTextDisplay.style.top = "84.8%";
+            engravingTextDisplay.style.left = "48.7%";
+            engravingTextDisplay.style.width = "29px";
+            engravingTextDisplay.style.height = "36px";
+
+            engravingMobileTextDisplay.style.top = "81%";
+            engravingMobileTextDisplay.style.left = "45.6%";
+            engravingMobileTextDisplay.style.width = "40px";
+            engravingMobileTextDisplay.style.height = "48px";
+            
+            if (font === "Roman") {
+              engravingTextDisplay.style.paddingTop = "5px";
+              engravingMobileTextDisplay.style.paddingTop = "5px";
+              if (letters === 1) {
+                engravingTextDisplay.style.fontSize = "40px";
+                engravingMobileTextDisplay.style.fontSize = "52px";
+                engravingTextDisplay.style.letterSpacing = "unset";
+                engravingMobileTextDisplay.style.letterSpacing = "unset";
+              } else if (letters === 2) {
+                engravingTextDisplay.style.fontSize = "20px";                
+                engravingMobileTextDisplay.style.fontSize = "26px";
+                engravingTextDisplay.style.letterSpacing = "-4px";
+                if (isIOS()) {
+                  engravingMobileTextDisplay.style.letterSpacing = "5px";
+                } else {
+                  engravingMobileTextDisplay.style.letterSpacing = "-3px";
+                }
+              }
+            } else if (font === "Vanessa") {
+              engravingTextDisplay.style.paddingTop = "10px";
+              engravingMobileTextDisplay.style.paddingTop = "14px";
+              engravingTextDisplay.style.letterSpacing = "5px";
+              engravingMobileTextDisplay.style.letterSpacing = "7px";
+              if (letters === 1) {
+                engravingTextDisplay.style.fontSize = "34px";
+                engravingMobileTextDisplay.style.fontSize = "46px";
+              } else if (letters === 2) {
+                engravingTextDisplay.style.fontSize = "16px";
+                engravingMobileTextDisplay.style.fontSize = "22px";
+              }
+            }
+          }
+          else if (currentTag === "engraving_earrings_2") { // ex. Beau Gold Earrings
+            engravingLeftTextDisplay.style.writingMode = "vertical-rl";
+            engravingLeftTextDisplay.style.textOrientation = "upright";
+            engravingTextDisplay.style.writingMode = "vertical-rl";
+            engravingTextDisplay.style.textOrientation = "upright";
+            engravingMobileLeftTextDisplay.style.writingMode = "vertical-rl";
+            engravingMobileLeftTextDisplay.style.textOrientation = "upright";
+            engravingMobileTextDisplay.style.writingMode = "vertical-rl";
+            engravingMobileTextDisplay.style.textOrientation = "upright";
+            
+            engravingLeftTextDisplay.style.top = "51.5%";
+            engravingLeftTextDisplay.style.left = "35.8%";
+            engravingLeftTextDisplay.style.width = "45px";
+            engravingLeftTextDisplay.style.height = "111px";
+            engravingTextDisplay.style.top = "51.5%";
+            engravingTextDisplay.style.left = "58.6%";
+            engravingTextDisplay.style.width = "45px";
+            engravingTextDisplay.style.height = "111px";
+
+            engravingMobileLeftTextDisplay.style.top = "52.5%";
+            engravingMobileLeftTextDisplay.style.left = "21.5%";
+            engravingMobileLeftTextDisplay.style.width = "40px";
+            engravingMobileLeftTextDisplay.style.height = "102px";
+            engravingMobileTextDisplay.style.top = "52.5%";
+            engravingMobileTextDisplay.style.left = "67%";
+            engravingMobileTextDisplay.style.width = "40px";
+            engravingMobileTextDisplay.style.height = "102px";
+            
+            if (font === "Roman") {              
+              engravingLeftTextDisplay.style.fontSize = "38px";
+              engravingLeftTextDisplay.style.paddingTop = "5px";
+              engravingTextDisplay.style.fontSize = "38px";
+              engravingTextDisplay.style.paddingTop = "5px";
+              engravingMobileLeftTextDisplay.style.fontSize = "32px";
+              engravingMobileLeftTextDisplay.style.paddingTop = "5px";
+              engravingMobileTextDisplay.style.fontSize = "32px";
+              engravingMobileTextDisplay.style.paddingTop = "5px";
+              
+              engravingLeftTextDisplay.style.letterSpacing = "-3px";
+              engravingTextDisplay.style.letterSpacing = "-3px";
+              if (isIOS()) {
+                engravingMobileLeftTextDisplay.style.letterSpacing = "5px";
+                engravingMobileTextDisplay.style.letterSpacing = "5px";
+              } else {
+                engravingMobileLeftTextDisplay.style.letterSpacing = "0px";
+                engravingMobileTextDisplay.style.letterSpacing = "0px";
+              }
+            } else if (font === "Vanessa") {
+              engravingLeftTextDisplay.style.fontSize = "30px";
+              engravingLeftTextDisplay.style.paddingTop = "15px";
+              engravingTextDisplay.style.fontSize = "30px";
+              engravingTextDisplay.style.paddingTop = "15px";
+              engravingMobileLeftTextDisplay.style.fontSize = "26px";
+              engravingMobileLeftTextDisplay.style.paddingTop = "20px";
+              engravingMobileTextDisplay.style.fontSize = "26px";
+              engravingMobileTextDisplay.style.paddingTop = "20px";
+              
+              engravingLeftTextDisplay.style.letterSpacing = "8px";
+              engravingMobileLeftTextDisplay.style.letterSpacing = "10px";
+              engravingTextDisplay.style.letterSpacing = "8px";
+              engravingMobileTextDisplay.style.letterSpacing = "10px";
+            }
+          }
+          else if (currentTag === "engraving_earrings_2_2") { // ex. Beau Single Gold Earrings
+            engravingTextDisplay.style.writingMode = "vertical-rl";
+            engravingTextDisplay.style.textOrientation = "upright";
+            engravingMobileTextDisplay.style.writingMode = "vertical-rl";
+            engravingMobileTextDisplay.style.textOrientation = "upright";
+            
+            engravingTextDisplay.style.top = "51.5%";
+            engravingTextDisplay.style.left = "47.1%";
+            engravingTextDisplay.style.width = "45px";
+            engravingTextDisplay.style.height = "111px";
+
+            engravingMobileTextDisplay.style.top = "52.5%";
+            engravingMobileTextDisplay.style.left = "44.1%";
+            engravingMobileTextDisplay.style.width = "40px";
+            engravingMobileTextDisplay.style.height = "102px";
+            
+            if (font === "Roman") {
+              engravingTextDisplay.style.fontSize = "38px";
+              engravingTextDisplay.style.paddingTop = "5px";
+              engravingMobileTextDisplay.style.fontSize = "32px";
+              engravingMobileTextDisplay.style.paddingTop = "5px";
+              
+              engravingTextDisplay.style.letterSpacing = "-3px";
+              if (isIOS()) {
+                engravingMobileTextDisplay.style.letterSpacing = "5px";
+              } else {
+                engravingMobileTextDisplay.style.letterSpacing = "0px";
+              }
+            } else if (font === "Vanessa") {
+              engravingTextDisplay.style.fontSize = "30px";
+              engravingTextDisplay.style.paddingTop = "15px";
+              engravingMobileTextDisplay.style.fontSize = "26px";
+              engravingMobileTextDisplay.style.paddingTop = "20px";
+              
+              engravingTextDisplay.style.letterSpacing = "8px";
+              engravingMobileTextDisplay.style.letterSpacing = "10px";
+            }
+          }
+          else if (currentTag === "engraving_earrings_2_1") { // ex. Miller Gold Earrings
+            engravingLeftTextDisplay.style.writingMode = "vertical-rl";
+            engravingLeftTextDisplay.style.textOrientation = "upright";
+            engravingTextDisplay.style.writingMode = "vertical-rl";
+            engravingTextDisplay.style.textOrientation = "upright";
+            engravingMobileLeftTextDisplay.style.writingMode = "vertical-rl";
+            engravingMobileLeftTextDisplay.style.textOrientation = "upright";
+            engravingMobileTextDisplay.style.writingMode = "vertical-rl";
+            engravingMobileTextDisplay.style.textOrientation = "upright";
+            
+            engravingLeftTextDisplay.style.top = "55%";
+            engravingLeftTextDisplay.style.left = "36.5%";
+            engravingLeftTextDisplay.style.width = "45px";
+            engravingLeftTextDisplay.style.height = "63px";
+            engravingTextDisplay.style.top = "55%";
+            engravingTextDisplay.style.left = "58.5%";
+            engravingTextDisplay.style.width = "45px";
+            engravingTextDisplay.style.height = "63px";
+
+            engravingMobileLeftTextDisplay.style.top = "60%";
+            engravingMobileLeftTextDisplay.style.left = "21.5%";
+            engravingMobileLeftTextDisplay.style.width = "38px";
+            engravingMobileLeftTextDisplay.style.height = "58px";
+            engravingMobileTextDisplay.style.top = "60%";
+            engravingMobileTextDisplay.style.left = "68.8%";
+            engravingMobileTextDisplay.style.width = "38px";
+            engravingMobileTextDisplay.style.height = "58px";
+            
+            if (font === "Roman") {
+              if (leftLetters === 1) {
+                engravingLeftTextDisplay.style.fontSize = "70px";
+                engravingLeftTextDisplay.style.paddingTop = "15px";
+                
+                engravingMobileLeftTextDisplay.style.fontSize = "65px";
+                if (isIOS()) {
+                  engravingMobileLeftTextDisplay.style.paddingTop = "0px";
+                } else {
+                  engravingMobileLeftTextDisplay.style.paddingTop = "10px";
+                }
+                
+                engravingLeftTextDisplay.style.letterSpacing = "-6px";
+                engravingMobileLeftTextDisplay.style.letterSpacing = "0px";
+              } else if (leftLetters === 2) {
+                engravingLeftTextDisplay.style.fontSize = "35px";
+                engravingLeftTextDisplay.style.paddingTop = "5px";
+                
+                engravingMobileLeftTextDisplay.style.fontSize = "32px";
+                engravingMobileLeftTextDisplay.style.paddingTop = "5px";
+                engravingLeftTextDisplay.style.letterSpacing = "0px";
+                if (isIOS()) {
+                  engravingMobileLeftTextDisplay.style.letterSpacing = "5px";
+                } else {
+                  engravingMobileLeftTextDisplay.style.letterSpacing = "0px";
+                }
+              }
+              
+              if (letters === 1) {
+                engravingTextDisplay.style.fontSize = "70px";
+                engravingTextDisplay.style.paddingTop = "15px";
+                
+                engravingMobileTextDisplay.style.fontSize = "65px";
+                if (isIOS()) {
+                  engravingMobileTextDisplay.style.paddingTop = "0px";
+                } else {
+                  engravingMobileTextDisplay.style.paddingTop = "10px";
+                }
+                
+                engravingTextDisplay.style.letterSpacing = "-6px";
+                engravingMobileTextDisplay.style.letterSpacing = "0px";
+              } else if (letters === 2) {
+                engravingTextDisplay.style.fontSize = "35px";
+                engravingTextDisplay.style.paddingTop = "5px";
+                
+                engravingMobileTextDisplay.style.fontSize = "32px";
+                engravingMobileTextDisplay.style.paddingTop = "5px";
+                engravingTextDisplay.style.letterSpacing = "0px";
+                if (isIOS()) {
+                  engravingMobileTextDisplay.style.letterSpacing = "5px";
+                } else {
+                  engravingMobileTextDisplay.style.letterSpacing = "0px";
+                }
+              }                
+            } 
+            else if (font === "Vanessa") {              
+              if (leftLetters === 1) {
+                engravingLeftTextDisplay.style.fontSize = "55px";
+                engravingLeftTextDisplay.style.paddingTop = "15px";
+                
+                engravingMobileLeftTextDisplay.style.fontSize = "50px";
+                engravingMobileLeftTextDisplay.style.paddingTop = "25px";
+                
+                engravingLeftTextDisplay.style.letterSpacing = "-4px";
+                engravingMobileLeftTextDisplay.style.letterSpacing = "5px";
+              } else if (leftLetters === 2) {
+                engravingLeftTextDisplay.style.fontSize = "30px";
+                engravingLeftTextDisplay.style.paddingTop = "30px";
+                
+                engravingMobileLeftTextDisplay.style.fontSize = "26px";
+                engravingMobileLeftTextDisplay.style.paddingTop = "20px";
+                
+                engravingLeftTextDisplay.style.letterSpacing = "8px";
+                engravingMobileLeftTextDisplay.style.letterSpacing = "5px";
+              }
+              
+              if (letters === 1) {
+                engravingTextDisplay.style.fontSize = "55px";
+                engravingTextDisplay.style.paddingTop = "15px";
+                
+                engravingMobileTextDisplay.style.fontSize = "50px";
+                engravingMobileTextDisplay.style.paddingTop = "25px";
+                
+                engravingTextDisplay.style.letterSpacing = "-4px";
+                engravingMobileTextDisplay.style.letterSpacing = "5px";
+              } else if (letters === 2) {
+                engravingTextDisplay.style.fontSize = "30px";
+                engravingTextDisplay.style.paddingTop = "30px";
+                
+                engravingMobileTextDisplay.style.fontSize = "26px";
+                engravingMobileTextDisplay.style.paddingTop = "20px";
+                
+                engravingTextDisplay.style.letterSpacing = "8px";
+                engravingMobileTextDisplay.style.letterSpacing = "5px";
+              }
+            }
+          }
+          else if (currentTag === "engraving_earrings_2_3") { // ex. Miller Single Gold Earrings
+            engravingTextDisplay.style.writingMode = "vertical-rl";
+            engravingTextDisplay.style.textOrientation = "upright";
+            engravingMobileTextDisplay.style.writingMode = "vertical-rl";
+            engravingMobileTextDisplay.style.textOrientation = "upright";
+            
+            engravingTextDisplay.style.top = "55%";
+            engravingTextDisplay.style.width = "45px";
+            engravingTextDisplay.style.height = "63px";
+
+            engravingMobileTextDisplay.style.top = "60%";
+            engravingMobileTextDisplay.style.left = "44%";
+            engravingMobileTextDisplay.style.width = "38px";
+            engravingMobileTextDisplay.style.height = "58px";
+            
+            if (font === "Roman") {              
+              if (letters === 1) {
+                engravingTextDisplay.style.fontSize = "70px";
+                engravingTextDisplay.style.paddingTop = "15px";
+                
+                engravingMobileTextDisplay.style.fontSize = "65px";
+                if (isIOS()) {
+                  engravingMobileTextDisplay.style.paddingTop = "0px";
+                } else {
+                  engravingMobileTextDisplay.style.paddingTop = "10px";
+                }
+                
+                engravingTextDisplay.style.letterSpacing = "-6px";
+                engravingMobileTextDisplay.style.letterSpacing = "0px";
+              } else if (letters === 2) {
+                engravingTextDisplay.style.fontSize = "35px";
+                engravingTextDisplay.style.paddingTop = "5px";
+                
+                engravingMobileTextDisplay.style.fontSize = "32px";
+                engravingMobileTextDisplay.style.paddingTop = "5px";
+                engravingTextDisplay.style.letterSpacing = "-3px";
+                if (isIOS()) {
+                  engravingMobileTextDisplay.style.letterSpacing = "5px";
+                } else {
+                  engravingMobileTextDisplay.style.letterSpacing = "-3px";
+                }
+              }
+            } 
+            else if (font === "Vanessa") {
+              if (letters === 1) {
+                engravingTextDisplay.style.fontSize = "55px";
+                engravingTextDisplay.style.paddingTop = "15px";
+                
+                engravingMobileTextDisplay.style.fontSize = "50px";
+                engravingMobileTextDisplay.style.paddingTop = "25px";
+                
+                engravingTextDisplay.style.letterSpacing = "-4px";
+                engravingMobileTextDisplay.style.letterSpacing = "5px";
+              } else if (letters === 2) {
+                engravingTextDisplay.style.fontSize = "30px";
+                engravingTextDisplay.style.paddingTop = "30px";
+                
+                engravingMobileTextDisplay.style.fontSize = "26px";
+                engravingMobileTextDisplay.style.paddingTop = "20px";
+                
+                engravingTextDisplay.style.letterSpacing = "8px";
+                engravingMobileTextDisplay.style.letterSpacing = "5px";
+              }
+            }
+          }
+        } 
+        
+      } else {
+        addEngravingButton.style.display = "none";
+      }
+
+      var engravingClose = document.getElementById("engraving_close");
+      engravingClose.addEventListener("click", function() {
+        engravingModal.classList.remove("target");
+      });
+
+      var engravingApply = document.querySelector("#engraving_apply");
+      var engravingRemove = document.querySelector("#engraving_remove");
+
+      // sending data to cart trz
+      engravingApply.addEventListener("click", function() {
+        if (engravingTextDisplay.innerHTML !== "" || engravingLeftTextDisplay.innerHTML !== "") {
+          engravingInfo.font = engravingFontDisplay.innerHTML;
+          engravingInfo.text = engravingTextDisplay.innerHTML;
+          engravingInfo.left = engravingLeftTextDisplay.innerHTML;
+
+          engravingInfoSecond.text = engravingTextDisplaySecond.innerHTML;
+
+          storeEngravingInfo();
+          updatePriceForEngraving("plus");
+        } else if (engravingMobileTextDisplay.innerHTML !== "" || engravingMobileLeftTextDisplay.innerHTML !== "") {
+          engravingInfo.font = engravingFontDisplay.innerHTML;
+          engravingInfo.text = engravingMobileTextDisplay.innerHTML;
+          engravingInfo.left = engravingMobileLeftTextDisplay.innerHTML;
+
+          storeEngravingInfo();
+          updatePriceForEngraving("plus");
+        } else {
+          // Remove engraving since text is empty
+          removeEngraving();
+        }
+        
+        engravingModal.classList.remove("target");
+      });
+
+      function storeEngravingInfo() {
+        var buttonText = "Engraving Added! ";
+        if (engravingInfo.left) {
+          buttonText += "\"" + engravingInfo.left + "\", ";
+        }
+        if (engravingInfo.text) {
+          buttonText += "\"" + engravingInfo.text + "\"";
+          buttonText += "\"" + engravingInfoSecond.text + "\"";
+        }
+        engravingButtonLabel.innerHTML = buttonText;
+
+        // Store engraving info in hidden input
+        _engravingTag.value = currentTag;
+        _engravingLeft.value = engravingInfo.left;
+        _engravingText.value = engravingInfo.text;
+        _engravingFont.value = engravingInfo.font;
+
+        _engravingTextSecond.value = engravingInfoSecond.text;
+        _engravingFontSecond.value = engravingInfoSecond.font;
+        
+      }
+
+      engravingRemove.addEventListener("click", function() {
+        removeEngraving();
+      });
+
+      function removeEngraving() {
+        engravingInfo.font = "Roman";
+        engravingInfo.text = "";
+        engravingInfo.left = "";
+        engravingModal.classList.remove("target");
+        engravingButtonLabel.innerHTML = "Add Engraving +$15";
+        document.querySelector("#engraving_text").value = "";
+        document.querySelector("#engraving_left").value = "";
+        
+        updatePriceForEngraving("minus");
+        
+        engravingModal.classList.remove("target");
+      }
+
+      function updatePriceForEngraving(type) {
+        const priceContentElement = document.getElementById('price_cotent');
+        const priceContent = priceContentElement.getAttribute('content');
+        const priceDisplayElement = priceContentElement.querySelector('.money');
+        
+        if (type === "plus") {
+          priceDisplayElement.textContent = Shopify.formatMoney(parseFloat(priceContent * 100) + 1500, "{{ shop.money_format }}");
+        } else if (type === "minus") {
+          priceDisplayElement.textContent = Shopify.formatMoney(parseFloat(priceContent * 100), "{{ shop.money_format }}");
+        }
+      }
+
+      var engravingConfirmModal = document.querySelector("#engraving_confirm_modal");
+      var engravingConfirmClose = document.getElementById("engraving_confirm_close");
+      engravingConfirmClose.addEventListener("click", function() {
+        engravingConfirmModal.classList.remove("target");
+      });
+    });
+      </script>
+      <!-- End Engraving Script -->
+    {% endform %}
+  </div>
+{% endif %}
+<style>
+  /* SIZE GUIDE css start */
+  .js-sizechart-lightbox {
+    width: 640px !important;
+    height: 420px !important;
+  }
+  /*  .ring-chart-row tr {
+  	height: 23px;
+  }
+  .ring-chart-data tr {
+  	width: 541px; height: 23px;
+  }
+   */
+
+  .medium-down--one-whole .size_chart {
+    border-bottom: 1px solid #a2a2a2;
+    font-weight: 600;
+    margin-bottom: 20px;
+  }
+
+  .fancybox-slide--complete .js-sizechart-lightbox .size-chart-wrap table tr {
+  }
+  .fancybox-slide--complete .js-sizechart-lightbox .size-chart-wrap table tr td p {
+    margin-bottom: 0;
+  }
+
+  @media only screen and (max-width: 767px) {
+    .fancybox-container {
+      top: 50%;
+      transform: translateY(-50%);
+      height: 480px;
+    }
+
+    .fancybox-content {
+      padding: 5px;
+    }
+
+    .fancybox-slide--complete .js-sizechart-lightbox .size-chart-wrap table tr {
+      display: inherit;
+    }
+    .fancybox-slide--complete .js-sizechart-lightbox .size-chart-wrap table tr td {
+      width: 30% !important;
+    }
+  }
+
+  /* SIZE GUIDE css end */
+  /*   Giftnote CSS */
+  .giftcard_button {
+    margin: 10px 0px;
+    display: block;
+    width: 100%;
+    animation-duration: 0.5s;
+    height: 40px;
+    text-transform: uppercase;
+    background: #a48d81;
+    color: white;
+  }
+  .giftnote_vouchers_modal_form_field {
+    margin-bottom: 10px !important;
+  }
+</style>
