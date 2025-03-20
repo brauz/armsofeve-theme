@@ -16795,3 +16795,23 @@ button.show-less-button {
 .overflow-hidden {
   overflow: hidden !important;
 }
+
+.find_in_store {
+  margin-top: 8px;
+  padding: 0;
+  width: 100%;
+  height: 45px;
+  position: relative;
+}
+
+.find_in_store .icon {
+  height: 100%;
+  width: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid #4f4f4f;
+  position: absolute;
+  right: 0;
+  top: 0;
+}

@@ -1,0 +1,31 @@
+{% comment %}
+  Snippet: Find In-Store - Powered by Brauz
+{% endcomment %}
+<button
+  type="button"
+  name="find-in-store"
+  class="
+    find_in_store
+    global-button
+    global-button--secondary
+  "
+  data-label="find in store"
+  onclick="window.Brauz_open_reserve_in_store_dialog()"
+>
+  <span class="text">
+    find in store
+  </span>
+  <span class="icon">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M6 3.00018L11 8.00018L6 13.0002" stroke="#111111" stroke-linecap="square" stroke-linejoin="round"/>
+    </svg>
+  </span>
+</button>
+<div
+  id="brauz-find-in-store-config-product-page"
+  data-sd="{{ shop.permanent_domain }}"
+  data-cvi="{{ product.first_available_variant.id }}"
+  data-hodv="{{ product.has_only_default_variant }}"
+  style="display: none; width: 0"
+></div>
+<script src="https://d3aq2u4yw77ivo.cloudfront.net/reserve-in-store/armsofeve/reserve-in-store.shopify.armsofeve.prod.js" async></script>
