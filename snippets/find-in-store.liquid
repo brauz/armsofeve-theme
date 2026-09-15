@@ -1,31 +1,42 @@
-{% comment %}
-  Snippet: Find In-Store - Powered by Brauz
-{% endcomment %}
-<button
-  type="button"
-  name="find-in-store"
-  class="
-    find_in_store
-    global-button
-    global-button--secondary
-  "
-  data-label="find in store"
-  onclick="window.Brauz_open_reserve_in_store_dialog()"
->
-  <span class="text">
-    find in store
-  </span>
-  <span class="icon">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M6 3.00018L11 8.00018L6 13.0002" stroke="#111111" stroke-linecap="square" stroke-linejoin="round"/>
-    </svg>
-  </span>
-</button>
-<div
-  id="brauz-find-in-store-config-product-page"
-  data-sd="{{ shop.permanent_domain }}"
-  data-cvi="{{ product.first_available_variant.id }}"
-  data-hodv="{{ product.has_only_default_variant }}"
-  style="display: none; width: 0"
-></div>
-<script src="https://d3aq2u4yw77ivo.cloudfront.net/reserve-in-store/armsofeve/reserve-in-store.shopify.armsofeve.prod.js" async></script>
+{%- liquid
+  assign is_coming_soon = false
+
+  if product.tags.size > 0 and product.tags contains 'coming-soon'
+    assign is_coming_soon = true
+  endif
+-%}
+
+{%- if settings.brauz_endpoint != blank and is_coming_soon == false -%}
+  {%- liquid
+    assign shop_domain = shop.permanent_domain
+    assign button_label = 'product.general.find_in_store' | t
+
+    if shop_domain contains 'dev'
+      assign shop_domain = 'arms-of-eve.myshopify.com'
+    endif
+  -%}
+  <find-in-store>
+    <button
+      type="button"
+      aria-haspopup="dialog"
+      aria-label="{{- button_label -}}"
+      class="flex w-full group mt-2 js-find-in-store"
+    >
+      <span class="button-outlined border-neutral-300 w-full group-hover:border-primary-100 group-hover:bg-primary-100 group-hover:border-r-white">
+        {{- button_label -}}
+      </span>
+      {%- render 'icon' with 'icon-chevron-right',
+        class: 'text-neutral-900 size-10 button-outlined border-neutral-300 border-l-0 px-0 group-hover:!border-primary-100 group-hover:!bg-primary-100'
+      -%}
+    </button>
+  </find-in-store>
+  <div
+    id="brauz-find-in-store-config-product-page"
+    data-sd="{{- shop_domain -}}"
+    data-cvi="{{- product.first_available_variant.id -}}"
+    data-hodv="{{- product.has_only_default_variant -}}"
+    class="sr-only"
+  ></div>
+
+  {%- render 'atom-script', name: 'module-find-in-store' -%}
+{%- endif -%}
