@@ -1,12 +1,19 @@
 {%- liquid
   assign is_coming_soon = false
+  assign is_bundle = false
 
-  if product.tags.size > 0 and product.tags contains 'coming-soon'
-    assign is_coming_soon = true
+  if product.tags.size > 0
+    if product.tags contains 'coming-soon'
+      assign is_coming_soon = true
+    endif
+
+    if product.tags contains 'bundle:true'
+      assign is_bundle = true
+    endif
   endif
 -%}
 
-{%- if settings.brauz_endpoint != blank and is_coming_soon == false -%}
+{%- if settings.brauz_endpoint != blank and is_coming_soon == false and is_bundle == false -%}
   {%- liquid
     assign shop_domain = shop.permanent_domain
     assign button_label = 'product.general.find_in_store' | t
